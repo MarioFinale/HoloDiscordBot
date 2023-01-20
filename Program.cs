@@ -186,7 +186,7 @@ namespace HoloDiscordBot
                 text = text.Trim('-');
                 foreach (YoutubeChannel channel in LiveChannels)
                 {
-                    text += "\n - " + channel.Name + " " + channel.Emoji;
+                    text += "\n - " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji+ " | " + channel.LatestLiveOrNextUrl + " ";
                 }
                 textToPrint += text + "\n";
 
@@ -207,6 +207,8 @@ namespace HoloDiscordBot
             {
                 textToPrint += "\nNo upcoming streams!\n";
             }
+
+            textToPrint+= "\n\n •❅──────────────────────────────────── ooo ────────────────────────────────────❅•\n\n";
             return textToPrint;
         }
     }
