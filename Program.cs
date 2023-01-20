@@ -166,14 +166,9 @@ namespace HoloDiscordBot
             {
                 if (!LiveChannels.Contains(channel))
                 {
-
-
-
                     if (DateTime.Compare(now, channel.LatestLiveOrNext) < 0)
                     {
-
                         UpcomingChannels.Add(channel);
-
                     }
                 }
             }
@@ -214,15 +209,5 @@ namespace HoloDiscordBot
             }
             return textToPrint;
         }
-
-
-
-
-
-
-
-
-
-
     }
 }
