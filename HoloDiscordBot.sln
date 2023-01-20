@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33103.184
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HoloDiscordBot", "HoloDiscordBot.csproj", "{DDD59807-9409-4AB7-AB60-8116E31BC24D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DDD59807-9409-4AB7-AB60-8116E31BC24D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDD59807-9409-4AB7-AB60-8116E31BC24D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDD59807-9409-4AB7-AB60-8116E31BC24D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDD59807-9409-4AB7-AB60-8116E31BC24D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {183AD17D-38EE-4A34-85E3-09A9C81DEDE8}
+	EndGlobalSection
+EndGlobal
