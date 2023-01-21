@@ -15,18 +15,17 @@ namespace HoloDiscordBot
 
         public static Tuple<string, bool> GETWebResourceAsText(string url)
         {
-            Uri resourceUri = new Uri(url);
+            Uri resourceUri = new(url);
             string response;
 
-            CookieContainer cookies = new CookieContainer();
+            CookieContainer cookies = new();
 
-            System.Text.UTF8Encoding encoding = new System.Text.UTF8Encoding();
-            HttpClientHandler handler = new HttpClientHandler()
+            HttpClientHandler handler = new()
             {
                 CookieContainer = cookies,
                 UseCookies = true
             };
-            HttpClient client = new HttpClient(handler);
+            HttpClient client = new(handler);
             client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             client.DefaultRequestHeaders.Connection.ParseAdd("keep-alive");
             client.DefaultRequestHeaders.Add("Method", "GET");
@@ -59,7 +58,7 @@ namespace HoloDiscordBot
 
         public static string CapitalizeFirstLetter(string word)
         {
-            return char.ToUpperInvariant(word[0]) + word.Substring(1);
+            return char.ToUpperInvariant(word[0]) + word[1..];
         }
 
     }

@@ -17,8 +17,10 @@ namespace HoloDiscordBot
     {
         DiscordSocketClient? Client;
 
-        public static Task Main(string[] args) => new Program().MainAsync();
-
+        public static Task Main()
+        {
+            return new Program().MainAsync();
+        }
 
         public async Task MainAsync()
         {
@@ -60,8 +62,7 @@ namespace HoloDiscordBot
 
                     foreach (ulong channel in channels)
                     {
-                        var Channel = Client.GetChannel(channel) as SocketTextChannel;
-                        if (Channel == null) continue;
+                        if (Client.GetChannel(channel) is not SocketTextChannel Channel) continue;
                         IEnumerable<IMessage> messages = Channel.GetMessagesAsync().Flatten().ToEnumerable();
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Deleting channel messages..."));
                         Channel.DeleteMessagesAsync(messages);
@@ -84,12 +85,12 @@ namespace HoloDiscordBot
         public static List<YoutubeChannel> GetChannels()
         {
             string[] channels = System.IO.File.ReadAllLines("./list.txt");
-            List<YoutubeChannel> YTchannels = new List<YoutubeChannel>();
+            List<YoutubeChannel> YTchannels = new();
             foreach (string line in channels)
             {
                 string name = line.Split('|')[0];
                 string emoji = line.Split('|')[1];
-                YoutubeChannel channel = new YoutubeChannel(name, emoji);
+                YoutubeChannel channel = new(name, emoji);
                 YTchannels.Add(channel);
             }
             return YTchannels;
@@ -99,8 +100,8 @@ namespace HoloDiscordBot
         {
             DateTime now = DateTime.Now;
 
-            List<YoutubeChannel> LiveChannels = new List<YoutubeChannel>();
-            List<YoutubeChannel> UpcomingChannels = new List<YoutubeChannel>();
+            List<YoutubeChannel> LiveChannels = new();
+            List<YoutubeChannel> UpcomingChannels = new();
 
             foreach (YoutubeChannel channel in channels)
             {
@@ -155,8 +156,8 @@ namespace HoloDiscordBot
         {
             DateTime now = DateTime.Now;
 
-            List<YoutubeChannel> LiveChannels = new List<YoutubeChannel>();
-            List<YoutubeChannel> UpcomingChannels = new List<YoutubeChannel>();
+            List<YoutubeChannel> LiveChannels = new();
+            List<YoutubeChannel> UpcomingChannels = new();
 
             foreach (YoutubeChannel channel in channels)
             {
