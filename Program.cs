@@ -208,7 +208,7 @@ namespace HoloDiscordBot
                 textToPrint += "\nNo upcoming streams!\n";
             }
 
-            textToPrint+= "\n\n •❅──────────────────────────────────── ooo ────────────────────────────────────❅•\n\n";
+            textToPrint+= "\n\n •❅─────────────── ooo ───────────────❅•\n\n";
             return textToPrint;
         }
     }
