@@ -125,7 +125,7 @@ namespace HoloDiscordBot
                 string text = "Live ";
                 foreach (YoutubeChannel channel in LiveChannels)
                 {
-                    text += channel.Emoji + " ";
+                    text += channel.Emoji;
 
                 }
                 text = text.Trim();
