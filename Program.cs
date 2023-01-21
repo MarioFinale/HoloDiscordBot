@@ -15,7 +15,7 @@ namespace HoloDiscordBot
 {
     public class Program
     {
-        DiscordSocketClient Client;
+        DiscordSocketClient? Client;
 
         public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -61,6 +61,7 @@ namespace HoloDiscordBot
                     foreach (ulong channel in channels)
                     {
                         var Channel = Client.GetChannel(channel) as SocketTextChannel;
+                        if (Channel == null) continue;
                         IEnumerable<IMessage> messages = Channel.GetMessagesAsync().Flatten().ToEnumerable();
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Deleting channel messages..."));
                         Channel.DeleteMessagesAsync(messages);

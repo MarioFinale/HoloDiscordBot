@@ -16,23 +16,24 @@ namespace HoloDiscordBot
         public string Url { get; }
         public string ExternalID { get; }
         public DateTime LatestLiveOrNext { get; }
-        public string LatestLiveOrNextUrl { get; }
+        public string? LatestLiveOrNextUrl { get; }
         public bool Live { get; }
-        public YoutubeVideo[] Videos { get; }
+        public YoutubeVideo[]? Videos { get; }
         public YoutubeChannel(string name, string emoji)
         {
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Loading " + name));
             Emoji = emoji;
             Name = name;
-            ExternalID = getExternalIdOfYTChannelByUsername(name).Item1;
+            ExternalID = GetExternalIdOfYTChannelByUsername(name).Item1;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "External ID of " + name + " is " + ExternalID));
             Url = "https://www.youtube.com/@" + name;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Getting videos from " + ExternalID));
-            XmlDocument doc = getfeedFromChannelByExternalID(ExternalID).Item1;
-            string[] videos = getVideoUrlsFromXMLFeed(doc);
+            XmlDocument doc = GetfeedFromChannelByExternalID(ExternalID).Item1;
+            string[]? videos = GetVideoUrlsFromXMLFeed(doc);
+            if (videos is null) return;
             string liveVideoUrl = string.Empty;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Sorting and processing videos from " + ExternalID));
-            List<YoutubeVideo> videosList = new List<YoutubeVideo>();
+            List<YoutubeVideo> videosList = new();
 
             foreach (string video in videos)
             {
@@ -55,9 +56,7 @@ namespace HoloDiscordBot
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Processed " + videosList.Count + " videos from " + Name));
         }
 
-
-
-        YoutubeVideo GetVideoObjectFromUrl(string videoUrl)
+        static YoutubeVideo GetVideoObjectFromUrl(string videoUrl)
         {
             Tuple<string, bool> response = Utils.GETWebResourceAsText(videoUrl);
             if (!response.Item2) return new YoutubeVideo(videoUrl, new DateTime(1990, 1, 1), false, videoUrl);//dummy year, we set it far ago so it goest to the end of the list when sorted by date
@@ -76,7 +75,7 @@ namespace HoloDiscordBot
                 }
                 string[] dateVals = broadcastMatch.Groups[2].Value.Replace('T', '-').Replace(':', '-').Replace('+', '-').Split('-');
                 int[] vals = Array.ConvertAll(dateVals, int.Parse);
-                DateTime date = new DateTime(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]);
+                DateTime date = new(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]);
                 bool live = broadcastMatch.Groups[1].Value.ToUpperInvariant().Trim().Equals("TRUE");
                 return new YoutubeVideo(videoUrl, date, live, videoTitle);
 
@@ -98,23 +97,23 @@ namespace HoloDiscordBot
                 if (videoUploadDatematch.Success)
                 {
                     string[] dateVals = videoUploadDatematch.Groups[1].Value.Split('-');
-                    DateTime date = new DateTime(int.Parse(dateVals[0]), int.Parse(dateVals[1]), int.Parse(dateVals[2]));
+                    DateTime date = new(int.Parse(dateVals[0]), int.Parse(dateVals[1]), int.Parse(dateVals[2]));
                     return new YoutubeVideo(videoUrl, date, false, videoTitle);
                 }
                 return new YoutubeVideo(videoUrl, new DateTime(1990, 1, 1), false, videoTitle);//dummy year again
             }
         }
 
-
-        string[] getVideoUrlsFromXMLFeed(XmlDocument document)
-        {
+        static string[]? GetVideoUrlsFromXMLFeed(XmlDocument document)
+        {            
             if (document is null) return null;
             var xmlNodeList = document.ChildNodes;
             if (xmlNodeList is null) return null;
             XmlNodeList rootNodes = (XmlNodeList)xmlNodeList;
-            XmlNode feed = rootNodes[1];
+            XmlNode? feed = rootNodes[1];
+            if (feed is null) return null;
             XmlNodeList feedNodes = feed.ChildNodes;
-            List<string> videos = new List<string>();
+            List<string> videos = new();
 
             foreach (XmlNode node in feedNodes)
             {
@@ -129,14 +128,13 @@ namespace HoloDiscordBot
             return videos.ToArray();
         }
 
-
-        Tuple<XmlDocument, bool> getfeedFromChannelByExternalID(string externalID)
+        static Tuple<XmlDocument, bool> GetfeedFromChannelByExternalID(string externalID)
         {
             string feedUrl = "https://www.youtube.com/feeds/videos.xml?channel_id=" + externalID;
             Tuple<string, bool> response = Utils.GETWebResourceAsText(feedUrl);
             if (!response.Item2) return new Tuple<XmlDocument, bool>(new XmlDocument(), false);
 
-            XmlDocument doc = new XmlDocument();
+            XmlDocument doc = new();
             try
             {
                 doc.LoadXml(response.Item1);
@@ -149,7 +147,7 @@ namespace HoloDiscordBot
             return new Tuple<XmlDocument, bool>(new XmlDocument(), false);
         }
 
-        Tuple<string, bool> getExternalIdOfYTChannelByUsername(string userName)
+        static Tuple<string, bool> GetExternalIdOfYTChannelByUsername(string userName)
         {
             string url = "https://www.youtube.com/@" + userName;
             Tuple<string, bool> response = Utils.GETWebResourceAsText(url);
