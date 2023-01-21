@@ -39,6 +39,9 @@ namespace HoloDiscordBot
                 if (YTvideo.Live)
                 {
                     Live = true;
+                    videosList.Add(YTvideo);
+                    Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", ExternalID + " is live! skipping processing of later videos..." + Name));
+                    break;
                 }
                 videosList.Add(YTvideo);
             }
