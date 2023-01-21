@@ -25,6 +25,7 @@ namespace HoloDiscordBot
             Emoji = emoji;
             Name = name;
             ExternalID = getExternalIdOfYTChannelByUsername(name).Item1;
+            Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "External ID of " + name + " is " + ExternalID));
             Url = "https://www.youtube.com/@" + name;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Getting videos from " + ExternalID));
             XmlDocument doc = getfeedFromChannelByExternalID(ExternalID).Item1;
