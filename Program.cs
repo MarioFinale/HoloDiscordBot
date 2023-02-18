@@ -60,16 +60,18 @@ namespace HoloDiscordBot
                     string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
                     string nextShort = GetNextStreamsShort(ytChannels);
 
-                    foreach (ulong channel in channels)
+                    foreach (ulong channelId in channels)
                     {
-                        if (Client.GetChannel(channel) is not SocketTextChannel Channel) continue;
-                        IEnumerable<IMessage> messages = Channel.GetMessagesAsync().Flatten().ToEnumerable();
+                        ITextChannel? channel = Client.GetChannel(channelId) as ITextChannel;                               
+                        if (channel is null ) continue;
+                        SocketChannel? socketChannel = channel as SocketChannel;
+                        IEnumerable<IMessage> messages = channel.GetMessagesAsync().Flatten().ToEnumerable();
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Deleting channel messages..."));
-                        Channel.DeleteMessagesAsync(messages);
+                        channel.DeleteMessagesAsync(messages);
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                        Channel.SendMessageAsync(nextStreamsAndLives);
+                        channel.SendMessageAsync(nextStreamsAndLives);
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Updating channel name..."));
-                        Channel.ModifyAsync(prop => prop.Name = nextShort);
+                        channel.ModifyAsync(prop => prop.Name = nextShort);
                         Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Done!"));
                     }
                     Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
