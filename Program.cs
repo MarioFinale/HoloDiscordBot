@@ -30,7 +30,7 @@ namespace HoloDiscordBot
             Console.WriteLine("----------------------------------- ooooo -----------------------------------");
             Console.Write("  _    _       _       _____  _                       _ ____        _   \r\n | |  | |     | |     |  __ \\(_)                     | |  _ \\      | |  \r\n | |__| | ___ | | ___ | |  | |_ ___  ___ ___  _ __ __| | |_) | ___ | |_ \r\n |  __  |/ _ \\| |/ _ \\| |  | | / __|/ __/ _ \\| '__/ _` |  _ < / _ \\| __|\r\n | |  | | (_) | | (_) | |__| | \\__ \\ (_| (_) | | | (_| | |_) | (_) | |_ \r\n |_|  |_|\\___/|_|\\___/|_____/|_|___/\\___\\___/|_|  \\__,_|____/ \\___/ \\__|\r\n                                                                        \r\n                                                                        \r\n\r\n");
             Console.WriteLine("----------------------------------- ooooo -----------------------------------");
-            Console.WriteLine("Ver. 0.0.0.0.0.0.0.0.0.0.0.0.0.0.1 IDK IDC");
+            Console.WriteLine("Ver. 0.2");
             Console.WriteLine("----------------------------------- ooooo -----------------------------------");
             Console.WriteLine();
             Console.WriteLine();
@@ -49,33 +49,37 @@ namespace HoloDiscordBot
             await Client.LoginAsync(TokenType.Bot, token);
             await Client.StartAsync();
 
-            Client.Ready += () =>
+            Client.Ready += async () =>
             {
-                Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Bot is connected!"));
+                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
 
                 while (true)
                 {
-                    Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Updating info!"));
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
                     YoutubeChannel[] ytChannels = GetChannels().ToArray();
                     string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
                     string nextShort = GetNextStreamsShort(ytChannels);
 
                     foreach (ulong channelId in channels)
                     {
-                        ITextChannel? channel = Client.GetChannel(channelId) as ITextChannel;                               
-                        if (channel is null ) continue;
+                        if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
                         SocketChannel? socketChannel = channel as SocketChannel;
-                        IEnumerable<IMessage> messages = channel.GetMessagesAsync().Flatten().ToEnumerable();
-                        Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Deleting channel messages..."));
-                        channel.DeleteMessagesAsync(messages);
-                        Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                        channel.SendMessageAsync(nextStreamsAndLives);
-                        Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Updating channel name..."));
-                        channel.ModifyAsync(prop => prop.Name = nextShort);
-                        Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Done!"));
+                        while (true)
+                        {
+                            IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
+                            if (!messages.Any()) break;
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
+                            await channel.DeleteMessagesAsync(messages);                            
+                        }      
+                        
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
+                        await channel.SendMessageAsync(nextStreamsAndLives);
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
+                        await channel.ModifyAsync(prop => prop.Name = nextShort);
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
                     }
-                    Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
-                    System.Threading.Thread.Sleep(300000); //5min delay
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
+                    Thread.Sleep(300000); //5min delay
                 }
             };
             // Block this task until the program is closed.
@@ -190,7 +194,7 @@ namespace HoloDiscordBot
                 text = text.Trim('-');
                 foreach (YoutubeChannel channel in LiveChannels)
                 {
-                    text += "\n - " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji+ " | " + channel.LatestLiveOrNextUrl + " ";
+                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji+ " | " + channel.LatestLiveOrNextUrl + " ";
                 }
                 textToPrint += text + "\n";
 
@@ -203,7 +207,7 @@ namespace HoloDiscordBot
                 string text = "Upcoming Streams: ";
                 foreach (YoutubeChannel channel in UpcomingChannels)
                 {
-                    text += "\n - " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | On <t:" + new DateTimeOffset(channel.LatestLiveOrNext.ToUniversalTime()).ToUnixTimeSeconds() + "> | ||<" + channel.LatestLiveOrNextUrl + ">||";
+                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | On <t:" + new DateTimeOffset(channel.LatestLiveOrNext.ToUniversalTime()).ToUnixTimeSeconds() + "> | ||<" + channel.LatestLiveOrNextUrl + ">||";
                 }
                 textToPrint += text + "\n";
             }
