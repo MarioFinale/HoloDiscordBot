@@ -55,6 +55,8 @@ namespace HoloDiscordBot
 
                 while (true)
                 {
+
+                    await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
                     YoutubeChannel[] ytChannels = GetChannels().ToArray();
                     string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
@@ -78,8 +80,11 @@ namespace HoloDiscordBot
                         await channel.ModifyAsync(prop => prop.Name = nextShort);
                         await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
                     }
+                    await Client.LogoutAsync();
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
                     Thread.Sleep(300000); //5min delay
+                    await Client.LoginAsync(TokenType.Bot, token);
+                    await Client.StartAsync();
                 }
             };
             // Block this task until the program is closed.
