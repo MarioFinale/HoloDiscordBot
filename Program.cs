@@ -55,36 +55,43 @@ namespace HoloDiscordBot
 
                 while (true)
                 {
-
-                    await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
-                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
-                    YoutubeChannel[] ytChannels = GetChannels().ToArray();
-                    string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
-                    string nextShort = GetNextStreamsShort(ytChannels);
-
-                    foreach (ulong channelId in channels)
+                    try
                     {
-                        if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
-                        SocketChannel? socketChannel = channel as SocketChannel;
-                        while (true)
+                        await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
+                        YoutubeChannel[] ytChannels = GetChannels().ToArray();
+                        string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
+                        string nextShort = GetNextStreamsShort(ytChannels);
+
+                        foreach (ulong channelId in channels)
                         {
-                            IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
-                            if (!messages.Any()) break;
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
-                            await channel.DeleteMessagesAsync(messages);                            
-                        }      
-                        
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                        await channel.SendMessageAsync(nextStreamsAndLives);
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
-                        await channel.ModifyAsync(prop => prop.Name = nextShort);
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
+                            if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
+                            SocketChannel? socketChannel = channel as SocketChannel;
+                            while (true)
+                            {
+                                IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
+                                if (!messages.Any()) break;
+                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
+                                await channel.DeleteMessagesAsync(messages);
+                            }
+
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
+                            await channel.SendMessageAsync(nextStreamsAndLives);
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
+                            await channel.ModifyAsync(prop => prop.Name = nextShort);
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
+                        }
+                        await Client.LogoutAsync();
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
+                        Thread.Sleep(300000); //5min delay
+                        await Client.LoginAsync(TokenType.Bot, token);
+                        await Client.StartAsync();
                     }
-                    await Client.LogoutAsync();
-                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
-                    Thread.Sleep(300000); //5min delay
-                    await Client.LoginAsync(TokenType.Bot, token);
-                    await Client.StartAsync();
+                    catch (Exception ex)
+                    {
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Error Handling", ex.Message));
+                    }
+                    
                 }
             };
             // Block this task until the program is closed.
