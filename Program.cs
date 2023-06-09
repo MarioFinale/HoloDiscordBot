@@ -39,64 +39,77 @@ namespace HoloDiscordBot
             var config = new DiscordSocketConfig()
             {
                 GatewayIntents = GatewayIntents.GuildMessages | GatewayIntents.Guilds,
-
             };
 
             Client = new DiscordSocketClient(config);
-
             Client.Log += Utils.Log;
             string token = System.IO.File.ReadAllText("./token.txt");
             await Client.LoginAsync(TokenType.Bot, token);
             await Client.StartAsync();
 
-            Client.Ready += async () =>
+            while (Client.ConnectionState != ConnectionState.Connected)
             {
-                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
+                await Task.Delay(1000);
+            }
+            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
 
-                while (true)
+            while (true)
+            {            
+                try
                 {
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
+                    YoutubeChannel[] ytChannels = GetChannels().ToArray();
+                    string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
+                    string nextShort = GetNextStreamsShort(ytChannels);
+
                     try
                     {
-                        await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
-                        YoutubeChannel[] ytChannels = GetChannels().ToArray();
-                        string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
-                        string nextShort = GetNextStreamsShort(ytChannels);
-
-                        foreach (ulong channelId in channels)
+                        if (Client.LoginState != LoginState.LoggedIn)
                         {
-                            if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
-                            SocketChannel? socketChannel = channel as SocketChannel;
-                            while (true)
+                            Client = new DiscordSocketClient(config);
+                            Client.Log += Utils.Log;
+                            await Client.LoginAsync(TokenType.Bot, token);
+                            await Client.StartAsync();
+                            while (Client.ConnectionState != ConnectionState.Connected)
                             {
-                                IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
-                                if (!messages.Any()) break;
-                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
-                                await channel.DeleteMessagesAsync(messages);
+                                await Task.Delay(1000);
                             }
-
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                            await channel.SendMessageAsync(nextStreamsAndLives);
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
-                            await channel.ModifyAsync(prop => prop.Name = nextShort);
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
                         }
-                        await Client.LogoutAsync();
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
-                        Thread.Sleep(300000); //5min delay
-                        await Client.LoginAsync(TokenType.Bot, token);
-                        await Client.StartAsync();
                     }
                     catch (Exception ex)
                     {
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Error Handling", ex.Message));
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Err Hand 0", ex.Message));
                     }
-                    
-                }
-            };
-            // Block this task until the program is closed.
-            await Task.Delay(-1);
 
+                    await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
+                    foreach (ulong channelId in channels)
+                    {
+                        if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
+                        SocketChannel? socketChannel = channel as SocketChannel;
+                        while (true)
+                        {
+                            IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
+                            if (!messages.Any()) break;
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
+                            await channel.DeleteMessagesAsync(messages);
+                        }
+
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
+                        await channel.SendMessageAsync(nextStreamsAndLives);
+                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
+                        await channel.ModifyAsync(prop => prop.Name = nextShort);
+                    }
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
+                    await Task.Delay(300000); //5min delay
+                }
+                catch (Exception ex)
+                {
+                    await Utils.Log(new LogMessage(LogSeverity.Info, "Err Hand 2", ex.Message));
+                    await Task.Delay(300000); //5min delay
+                }
+            }
         }
 
 
@@ -206,7 +219,7 @@ namespace HoloDiscordBot
                 text = text.Trim('-');
                 foreach (YoutubeChannel channel in LiveChannels)
                 {
-                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji+ " | " + channel.LatestLiveOrNextUrl + " ";
+                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | " + channel.LatestLiveOrNextUrl + " ";
                 }
                 textToPrint += text + "\n";
 
@@ -228,7 +241,7 @@ namespace HoloDiscordBot
                 textToPrint += "\nNo upcoming streams!\n";
             }
 
-            textToPrint+= "\n\n •❅─────────────── ooo ───────────────❅•\n\n";
+            textToPrint += "\n\n •❅─────────────── ooo ───────────────❅•\n\n";
             return textToPrint;
         }
     }
