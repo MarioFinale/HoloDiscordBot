@@ -10,13 +10,12 @@ using static System.Net.WebRequestMethods;
 using System.Collections.Generic;
 using static System.Net.Mime.MediaTypeNames;
 using System.Threading.Channels;
+using Newtonsoft.Json.Linq;
 
 namespace HoloDiscordBot
 {
     public class Program
     {
-        DiscordSocketClient? Client;
-
         public static Task Main()
         {
             return new Program().MainAsync();
@@ -24,306 +23,562 @@ namespace HoloDiscordBot
 
         public async Task MainAsync()
         {
-            if (!System.IO.File.Exists("./channels.txt")) return;
-            if (!System.IO.File.Exists("./token.txt")) return;
-            if (!System.IO.File.Exists("./list.txt")) return;
-            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
-            Console.Write("  _    _       _       _____  _                       _ ____        _   \r\n | |  | |     | |     |  __ \\(_)                     | |  _ \\      | |  \r\n | |__| | ___ | | ___ | |  | |_ ___  ___ ___  _ __ __| | |_) | ___ | |_ \r\n |  __  |/ _ \\| |/ _ \\| |  | | / __|/ __/ _ \\| '__/ _` |  _ < / _ \\| __|\r\n | |  | | (_) | | (_) | |__| | \\__ \\ (_| (_) | | | (_| | |_) | (_) | |_ \r\n |_|  |_|\\___/|_|\\___/|_____/|_|___/\\___\\___/|_|  \\__,_|____/ \\___/ \\__|\r\n                                                                        \r\n                                                                        \r\n\r\n");
-            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
-            Console.WriteLine("Ver. 0.2");
-            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
-            Console.WriteLine();
-            Console.WriteLine();
-            ulong[] channels = Array.ConvertAll(System.IO.File.ReadAllLines("./channels.txt"), ulong.Parse);
+            // Check if necessary files exist, return if not
+            if (!System.IO.File.Exists("./channels.txt")) {
+                await Utils.Log(new LogMessage(LogSeverity.Error, "MainAsync", "channels.txt is missing!"));
+                return;
+            } 
+            if (!System.IO.File.Exists("./token.txt"))
+            {
+                await Utils.Log(new LogMessage(LogSeverity.Error, "MainAsync", "token.txt is missing!"));
+                return;
+            }
+            if (!System.IO.File.Exists("./list.txt"))
+            {
+                await Utils.Log(new LogMessage(LogSeverity.Error, "MainAsync", "list.txt is missing!"));
+                return;
+            }
 
-            var config = new DiscordSocketConfig()
+            // Display the ASCII art and version information
+            DisplayStartupInformation();
+
+            // Configure the Discord client
+            var discordConfig = new DiscordSocketConfig()
             {
                 GatewayIntents = GatewayIntents.GuildMessages | GatewayIntents.Guilds,
             };
 
-            Client = new DiscordSocketClient(config);
-            Client.Log += Utils.Log;
-            string token = System.IO.File.ReadAllText("./token.txt");
-            await Client.LoginAsync(TokenType.Bot, token);
-            await Client.StartAsync();
+            // Initialize the Discord client
+            var discordClient = InitializeDiscordClient(discordConfig);
 
-            while (Client.ConnectionState != ConnectionState.Connected)
+            // Read the bot token from the file
+            string botToken = System.IO.File.ReadAllText("./token.txt");
+
+            // Log in and start the Discord client
+            await LoginAndStartClient(discordClient, botToken);
+
+            // Wait for the client to be connected
+            await WaitForClientConnection(discordClient);
+
+            // Log information about the bot being connected
+            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
+
+            // Call the main loop
+            await MainLoop(discordClient, discordConfig, botToken);
+        }
+
+        /// <summary>
+        /// Displays the ASCII art and version information
+        /// </summary>
+        private void DisplayStartupInformation()
+        {
+            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
+            Console.Write("  _    _       _       _____  _                       _ ____        _   \r\n | |  | |     | |     |  __ \\(_)                     | |  _ \\      | |  \r\n | |__| | ___ | | ___ | |  | |_ ___  ___ ___  _ __ __| | |_) | ___ | |_ \r\n |  __  |/ _ \\| |/ _ \\| |  | | / __|/ __/ _ \\| '__/ _` |  _ < / _ \\| __|\r\n | |  | | (_) | | (_) | |__| | \\__ \\ (_| (_) | | | (_| | |_) | (_) | |_ \r\n |_|  |_|\\___/|_|\\___/|_____/|_|___/\\___\\___/|_|  \\__,_|____/ \\___/ \\__|\r\n                                                                        \r\n                                                                        \r\n\r\n");
+            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
+            Console.WriteLine("Ver. 1.1");
+            Console.WriteLine("----------------------------------- ooooo -----------------------------------");
+            Console.WriteLine();
+            Console.WriteLine();
+        }
+
+        /// <summary>
+        /// Initializes the Discord client
+        /// </summary>
+        /// <param name="config"></param>
+        /// <returns></returns>
+        private DiscordSocketClient InitializeDiscordClient(DiscordSocketConfig config)
+        {
+            // Create and configure the Discord client
+            var client = new DiscordSocketClient(config);
+
+            // Set up event handler for logging
+            client.Log += Utils.Log;
+
+            return client;
+        }
+
+        /// <summary>
+        /// Logs in and starts the Discord client
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        private async Task LoginAndStartClient(DiscordSocketClient client, string token)
+        {
+            // Log in to Discord with the bot token
+            await client.LoginAsync(TokenType.Bot, token);
+
+            // Start the Discord client
+            await client.StartAsync();
+        }
+
+        /// <summary>
+        /// Waits for the client to be connected
+        /// </summary>
+        /// <param name="client"></param>
+        /// <returns></returns>
+        private async Task WaitForClientConnection(DiscordSocketClient client)
+        {
+            // Wait for the client to be connected
+            while (client.ConnectionState != ConnectionState.Connected)
             {
                 await Task.Delay(1000);
             }
-            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
+        }
 
+        /// <summary>
+        /// Main loop
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="config"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        async Task MainLoop(DiscordSocketClient client, DiscordSocketConfig config, string token)
+        {
             while (true)
-            {            
+            {
+                // Read channel IDs from the file
+                ulong[] channels = Array.ConvertAll(System.IO.File.ReadAllLines("./channels.txt"), ulong.Parse);
+
                 try
                 {
+                    // Log information about the update process
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating info!"));
+
+                    // Get YouTube channels from the file
                     YoutubeChannel[] ytChannels = GetChannels().ToArray();
+
+                    // Get information about the next streams and lives
                     string nextStreamsAndLives = GetNextStreamsAndLives(ytChannels);
+
+                    // Get short information about the next streams
                     string nextShort = GetNextStreamsShort(ytChannels);
 
                     try
                     {
-                        if (Client.LoginState != LoginState.LoggedIn)
+                        // Reinitialize the Discord client if not logged in
+                        if (client.LoginState != LoginState.LoggedIn)
                         {
-                            Client = new DiscordSocketClient(config);
-                            Client.Log += Utils.Log;
-                            await Client.LoginAsync(TokenType.Bot, token);
-                            await Client.StartAsync();
-                            while (Client.ConnectionState != ConnectionState.Connected)
-                            {
-                                await Task.Delay(1000);
-                            }
+                            client = new DiscordSocketClient(config);
+                            client.Log += Utils.Log;
+                            await client.LoginAsync(TokenType.Bot, token);
+                            await client.StartAsync();
+                            await WaitForClientConnection(client);
                             await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Bot is connected!"));
                         }
                     }
                     catch (Exception ex)
                     {
+                        // Log any exceptions during client initialization
                         await Utils.Log(new LogMessage(LogSeverity.Info, "Err Hand 0", ex.Message));
                     }
 
-                    await Client.SetGameAsync("Pekora", null, ActivityType.Watching);
+                    // Set the bot's activity
+                    await client.SetGameAsync("Pekora", null, ActivityType.Watching);
+
+                    // Iterate through each configured channel
                     foreach (ulong channelId in channels)
                     {
-                        if (Client.GetChannel(channelId) is not ITextChannel channel) continue;
-                        SocketChannel? socketChannel = channel as SocketChannel;
-                        while (true)
-                        {
-                            IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
-                            if (!messages.Any()) break;
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Deleting " + messages.Count() + " channel messages..."));
-                            await channel.DeleteMessagesAsync(messages);
-                        }
+                        // Check if the channel is a text channel
+                        if (client.GetChannel(channelId) is not ITextChannel channel)
+                            continue;
 
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                        if (nextStreamsAndLives.Length > 1999)
-                        {
-                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Message lenght is over 2000 characters, splitting..."));
+                        // Delete all messages in the channel
+                        await DeleteAllMessages(channel);
 
-                            if (nextStreamsAndLives.Contains("\nUpcoming Streams:") && nextStreamsAndLives.Contains("Live now:"))
-                            {
-                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Splitting by upcoming streams."));
-                                string[] messages = nextStreamsAndLives.Split("\nUpcoming Streams:");                                
-                                messages[1] = "\n •❅─────────────── ooo ───────────────❅•\n" + "\nUpcoming Streams:" + messages[1];
-                                await channel.SendMessageAsync(messages[0]);
+                        // Update the next streams message
+                        await UpdateNextStreamsMessage(channel, nextStreamsAndLives);
 
-                                
-                                if (messages[1].Length > 1999)
-                                {
-                                    int i = 1999;
-                                    string secondmessage = messages[1];
-                                    while (true)
-                                    {
-                                        char c1 = secondmessage[i];
-                                        char c2 = secondmessage[i + 1];
-                                        char c3 = secondmessage[i + 2];
-
-                                        if (c1 == '\n' && c2 == '-' && c3 == ' ')
-                                        {
-                                            messages[0] = secondmessage[..i];
-                                            messages[1] = secondmessage[i..];
-                                            break;
-                                        }
-                                        i--;
-                                    }
-                                    await channel.SendMessageAsync(messages[0]);
-                                    await channel.SendMessageAsync(messages[1]);
-                                }
-                                else
-                                {
-                                    await channel.SendMessageAsync(messages[1]);
-                                }                               
-                            }
-                            else
-                            {
-                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Splitting by character lenght & new line."));
-                                string[] messages = new string[2];
-                                int i = 1999;
-                                while (true)
-                                {
-                                    char c1 = nextStreamsAndLives[i];
-                                    char c2 = nextStreamsAndLives[i + 1];
-                                    char c3 = nextStreamsAndLives[i + 2];
-
-                                    if (c1 == '\n' && c2 == '-' && c3 == ' ')
-                                    {
-                                        messages[0] = nextStreamsAndLives[..i];
-                                        messages[1] = nextStreamsAndLives[i..];
-                                        break;
-                                    }
-                                    i--;
-                                }
-                                await channel.SendMessageAsync(messages[0]);
-                                if (messages[1].Length > 1999)
-                                {
-                                    i = 1999;
-                                    string secondmessage = messages[1];
-                                    while (true)
-                                    {
-                                        char c1 = secondmessage[i];
-                                        char c2 = secondmessage[i + 1];
-                                        char c3 = secondmessage[i + 2];
-
-                                        if (c1 == '\n' && c2 == '-' && c3 == ' ')
-                                        {
-                                            messages[0] = secondmessage[..i];
-                                            messages[1] = secondmessage[i..];
-                                            break;
-                                        }
-                                        i--;
-                                    }
-                                    await channel.SendMessageAsync(messages[0]);
-                                    await channel.SendMessageAsync(messages[1]);
-                                }
-                                else
-                                {
-                                    await channel.SendMessageAsync(messages[1]);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            await channel.SendMessageAsync(nextStreamsAndLives);
-                        }
-                        
-                        await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
-                        await channel.ModifyAsync(prop => prop.Name = nextShort);
+                        // Modify the channel name
+                        await ModifyChannelName(channel, nextShort);
                     }
+
+                    // Log completion and sleep for 5 minutes
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Done!"));
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Sleeping for 5 minutes..."));
-                    await Task.Delay(300000); //5min delay
+                    await Task.Delay(300000); // 5min delay
                 }
                 catch (Exception ex)
                 {
+                    // Log any exceptions during the update process and sleep for 5 minutes
                     await Utils.Log(new LogMessage(LogSeverity.Info, "Err Hand 2", ex.Message));
-                    await Task.Delay(300000); //5min delay
+                    await Task.Delay(300000); // 5min delay
                 }
             }
         }
 
-
-        public static List<YoutubeChannel> GetChannels()
+        /// <summary>
+        /// Deletes all messages in the supplied channel.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        async Task DeleteAllMessages(ITextChannel channel)
         {
-            string[] channels = System.IO.File.ReadAllLines("./list.txt");
-            List<YoutubeChannel> YTchannels = new();
-            foreach (string line in channels)
+            // Retrieve all messages in the channel
+            IEnumerable<IMessage> messages = await channel.GetMessagesAsync().FlattenAsync();
+
+            // Check if there are any messages to delete
+            if (messages.Any())
             {
-                string name = line.Split('|')[0];
-                string emoji = line.Split('|')[1];
-                YoutubeChannel channel = new(name, emoji);
-                YTchannels.Add(channel);
+                // Log information about the deletion
+                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", $"Deleting {messages.Count()} channel messages..."));
+
+                // Delete all messages in the channel
+                await channel.DeleteMessagesAsync(messages);
             }
-            return YTchannels;
         }
 
-        public static string GetNextStreamsShort(YoutubeChannel[] channels)
+        /// <summary>
+        /// Sends an updated "Live now" and "Next streams" message to the supplied channel.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="nextStreamsAndLives"></param>
+        /// <returns></returns>
+        async Task UpdateNextStreamsMessage(ITextChannel channel, string nextStreamsAndLives)
         {
-            DateTime now = DateTime.Now;
-
-            List<YoutubeChannel> LiveChannels = new();
-            List<YoutubeChannel> UpcomingChannels = new();
-
-            foreach (YoutubeChannel channel in channels)
+            // Check if the message length is over 1999 characters
+            if (nextStreamsAndLives.Length > 1999)
             {
-                if (channel.Live) LiveChannels.Add(channel);
-            }
+                // Log information about splitting the message
+                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Message length is over 2000 characters, splitting..."));
 
-            foreach (YoutubeChannel channel in channels)
-            {
-                if (!LiveChannels.Contains(channel))
+                // Split the message into parts
+                string[] messages = SplitMessage(nextStreamsAndLives);
+
+                // Send the first part of the message
+                await channel.SendMessageAsync(messages[0]);
+
+                // Check if the second part is still too long
+                if (messages[1].Length > 1999)
                 {
-                    if (DateTime.Compare(now, channel.LatestLiveOrNext) < 0)
-                    {
-                        UpcomingChannels.Add(channel);
-                    }
-                }
-            }
-
-            string textToPrint = string.Empty;
-
-            if (LiveChannels.Count > 0)
-            {
-                string text = "Live ";
-                foreach (YoutubeChannel channel in LiveChannels)
-                {
-                    text += channel.Emoji;
-
-                }
-                text = text.Trim();
-                text = text.Replace(' ', '-');
-                textToPrint += text;
-
-            }
-            else
-            {
-                if (UpcomingChannels.Count > 0)
-                {
-                    UpcomingChannels = UpcomingChannels.OrderBy(a => a.LatestLiveOrNext).ToList();
-                    string text = "Next " + UpcomingChannels[0].Emoji;
-                    if (UpcomingChannels.Count > 1) text += UpcomingChannels[1].Emoji;
-                    text = text.Trim();
-                    textToPrint += text;
+                    // Send the second part in smaller chunks
+                    await SendMessageInParts(channel, messages[1]);
                 }
                 else
                 {
-                    textToPrint += "No streams";
+                    // Send the second part as a whole
+                    await channel.SendMessageAsync(messages[1]);
                 }
             }
-            return textToPrint.Replace(' ', '_');
+            else
+            {
+                // Send the entire message
+                await channel.SendMessageAsync(nextStreamsAndLives);
+            }
         }
 
-        public static string GetNextStreamsAndLives(YoutubeChannel[] channels)
+        /// <summary>
+        /// Sends a message in parts;
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        async Task SendMessageInParts(ITextChannel channel, string message)
         {
-            DateTime now = DateTime.Now;
+            int index = 1999;
 
-            List<YoutubeChannel> LiveChannels = new();
-            List<YoutubeChannel> UpcomingChannels = new();
-
-            foreach (YoutubeChannel channel in channels)
+            // Iterate through the message to find a suitable split point
+            while (true)
             {
-                if (channel.Live) LiveChannels.Add(channel);
+                // Check for a newline followed by '-' and a space
+                char c1 = message[index];
+                char c2 = message[index + 1];
+                char c3 = message[index + 2];
+
+                // Check if the split point is found
+                if (c1 == '\n' && c2 == '-' && c3 == ' ')
+                {
+                    // Send the first part of the message
+                    await channel.SendMessageAsync(message[..index]);
+
+                    // Send the remaining part of the message
+                    await channel.SendMessageAsync(message[index..]);
+                    break;
+                }
+
+                // Move to the previous character
+                index--;
+
+                // Check if the index goes out of bounds
+                if (index < 0)
+                {
+                    // If no suitable split point is found, send the entire message
+                    await channel.SendMessageAsync(message);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Changes a channel name to the supplied string
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="nextShort"></param>
+        /// <returns></returns>
+        async Task ModifyChannelName(ITextChannel channel, string nextShort)
+        {
+            // Log information about updating the channel name
+            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
+
+            // Modify the channel's name property
+            await channel.ModifyAsync(properties => properties.Name = nextShort);
+        }
+
+        /// <summary>
+        /// Splits a message in the best way possible to be sent in parts.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        string[] SplitMessage(string message)
+        {
+            // Array to store the split messages
+            string[] messages = new string[2];
+
+            // Start index for splitting
+            int index = 1999;
+
+            // Iterate through the message to find a suitable split point
+            while (true)
+            {
+                // Check for a newline followed by '-' and a space
+                char c1 = message[index];
+                char c2 = message[index + 1];
+                char c3 = message[index + 2];
+
+                // Check if the split point is found
+                if (c1 == '\n' && c2 == '-' && c3 == ' ')
+                {
+                    // Set the first part of the message
+                    messages[0] = message[..index];
+
+                    // Set the remaining part of the message
+                    messages[1] = message[index..];
+                    break;
+                }
+
+                // Move to the previous character
+                index--;
+
+                // Check if the index goes out of bounds
+                if (index < 0)
+                {
+                    // If no suitable split point is found, set the entire message
+                    messages[0] = message;
+                    messages[1] = string.Empty;
+                    break;
+                }
             }
 
+            // Return the array of split messages
+            return messages;
+        }
+
+        /// <summary>
+        /// Gets a list of youtube channels from the /list.txt text file.
+        /// </summary>
+        /// <returns></returns>
+        public static List<YoutubeChannel> GetChannels()
+        {
+            // Read all lines from the file containing channel information
+            string[] channelLines = System.IO.File.ReadAllLines("./list.txt");
+
+            // List to store YouTube channels
+            List<YoutubeChannel> youtubeChannels = new();
+
+            // Iterate through each line in the file
+            foreach (string line in channelLines)
+            {
+                // Split the line using the '|' character to extract channel name and emoji
+                string[] channelInfo = line.Split('|');
+
+                // Ensure that the line has the expected format
+                if (channelInfo.Length == 2)
+                {
+                    // Extract channel name and emoji
+                    string name = channelInfo[0];
+                    string emoji = channelInfo[1];
+
+                    // Create a new YoutubeChannel object
+                    YoutubeChannel channel = new(name, emoji);
+
+                    // Add the channel to the list
+                    youtubeChannels.Add(channel);
+                }
+                else
+                {
+                    // Log warning for unexpected line format
+                    Utils.Log(new LogMessage(LogSeverity.Warning, "GetChannels", $"Skipping line with unexpected format: {line}"));
+                }
+            }
+
+            // Return the list of YouTube channels
+            return youtubeChannels;
+        }
+
+
+        /// <summary>
+        /// Generates a short string with the emojis of the channels with livestreams or scheduled streams/videos.
+        /// </summary>
+        /// <param name="channels"></param>
+        /// <returns></returns>
+        public static string GetNextStreamsShort(YoutubeChannel[] channels)
+        {
+            // Get the current date and time
+            DateTime now = DateTime.Now;
+
+            // List to store channels currently live
+            List<YoutubeChannel> liveChannels = new();
+
+            // List to store upcoming channels
+            List<YoutubeChannel> upcomingChannels = new();
+
+            // Iterate through channels to categorize them
             foreach (YoutubeChannel channel in channels)
             {
-                if (!LiveChannels.Contains(channel))
+                // Check if the channel is currently live
+                if (channel.Live)
                 {
+                    liveChannels.Add(channel);
+                }
+            }
+
+            // Iterate through channels to find upcoming channels
+            foreach (YoutubeChannel channel in channels)
+            {
+                // Check if the channel is not in the live channels list
+                if (!liveChannels.Contains(channel))
+                {
+                    // Check if the channel's latest live or next stream is in the future
                     if (DateTime.Compare(now, channel.LatestLiveOrNext) < 0)
                     {
-                        UpcomingChannels.Add(channel);
+                        upcomingChannels.Add(channel);
                     }
                 }
             }
 
+            // String to store the final text to print
             string textToPrint = string.Empty;
 
-            if (LiveChannels.Count > 0)
+            // Check if there are channels currently live
+            if (liveChannels.Count > 0)
             {
-                string text = "Live now: ";
-                foreach (YoutubeChannel channel in LiveChannels)
+                // Build text for live channels
+                string liveText = "Live ";
+                foreach (YoutubeChannel channel in liveChannels)
                 {
-                    text += channel.Emoji + "-";
-
+                    liveText += channel.Emoji;
                 }
-                text = text.Trim('-');
-                foreach (YoutubeChannel channel in LiveChannels)
+                liveText = liveText.Trim();
+                liveText = liveText.Replace(' ', '-');
+                textToPrint += liveText;
+            }
+            else
+            {
+                // Check if there are upcoming channels
+                if (upcomingChannels.Count > 0)
                 {
-                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | " + channel.LatestLiveOrNextUrl + " ";
-                }
-                textToPrint += text + "\n\n •❅─────────────── ooo ───────────────❅•\n\n"; ;
+                    // Order upcoming channels by the time of the next stream
+                    upcomingChannels = upcomingChannels.OrderBy(a => a.LatestLiveOrNext).ToList();
 
+                    // Build text for upcoming channels
+                    string upcomingText = "Next " + upcomingChannels[0].Emoji;
+
+                    if (upcomingChannels.Count > 1)
+                    {
+                        upcomingText += upcomingChannels[1].Emoji;
+                    }
+
+                    upcomingText = upcomingText.Trim();
+                    textToPrint += upcomingText;
+                }
+                else
+                {
+                    // No live or upcoming channels
+                    textToPrint += "No streams";
+                }
             }
 
-            if (UpcomingChannels.Count > 0)
-            {
-                UpcomingChannels = UpcomingChannels.OrderBy(a => a.LatestLiveOrNext).ToList();
+            // Replace spaces with underscores in the final text
+            return textToPrint.Replace(' ', '_');
+        }
 
-                string text = "Upcoming Streams: ";
-                foreach (YoutubeChannel channel in UpcomingChannels)
+
+        /// <summary>
+        /// Gets a list of channels that have scheduled streams and/or videos.
+        /// </summary>
+        /// <param name="channels"></param>
+        /// <returns></returns>
+        public static string GetNextStreamsAndLives(YoutubeChannel[] channels)
+        {
+            // Get the current date and time
+            DateTime now = DateTime.Now;
+
+            // List to store channels currently live
+            List<YoutubeChannel> liveChannels = new();
+
+            // List to store upcoming channels
+            List<YoutubeChannel> upcomingChannels = new();
+
+            // Iterate through channels to categorize them
+            foreach (YoutubeChannel channel in channels)
+            {
+                // Check if the channel is currently live
+                if (channel.Live)
                 {
-                    text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | On <t:" + new DateTimeOffset(channel.LatestLiveOrNext.ToUniversalTime()).ToUnixTimeSeconds() + "> | ||<" + channel.LatestLiveOrNextUrl + ">||";
+                    liveChannels.Add(channel);
                 }
-                textToPrint += text + "\n";
+            }
+
+            // Iterate through channels to find upcoming channels
+            foreach (YoutubeChannel channel in channels)
+            {
+                // Check if the channel is not in the live channels list
+                if (!liveChannels.Contains(channel))
+                {
+                    // Check if the channel's latest live or next stream is in the future
+                    if (DateTime.Compare(now, channel.LatestLiveOrNext) < 0)
+                    {
+                        upcomingChannels.Add(channel);
+                    }
+                }
+            }
+
+            // String to store the final text to print
+            string textToPrint = string.Empty;
+
+            // Check if there are channels currently live
+            if (liveChannels.Count > 0)
+            {
+                // Build text for live channels
+                string liveText = "Live now: ";
+                foreach (YoutubeChannel channel in liveChannels)
+                {
+                    liveText += channel.Emoji + "-";
+                }
+                liveText = liveText.Trim('-');
+
+                foreach (YoutubeChannel channel in liveChannels)
+                {
+                    liveText += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | " + channel.LatestLiveOrNextUrl + " ";
+                }
+
+                textToPrint += liveText + "\n\n •❅─────────────── ooo ───────────────❅•\n\n";
+            }
+
+            // Check if there are upcoming channels
+            if (upcomingChannels.Count > 0)
+            {
+                // Order upcoming channels by the time of the next stream
+                upcomingChannels = upcomingChannels.OrderBy(a => a.LatestLiveOrNext).ToList();
+
+                // Build text for upcoming channels
+                string upcomingText = "Upcoming Streams: ";
+                foreach (YoutubeChannel channel in upcomingChannels)
+                {
+                    upcomingText += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | On <t:" + new DateTimeOffset(channel.LatestLiveOrNext.ToUniversalTime()).ToUnixTimeSeconds() + "> | ||<" + channel.LatestLiveOrNextUrl + ">||";
+                }
+
+                textToPrint += upcomingText + "\n";
             }
             else
             {
