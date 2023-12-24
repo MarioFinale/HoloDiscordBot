@@ -34,7 +34,7 @@ namespace HoloDiscordBot
             string liveVideoUrl = string.Empty;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Sorting and processing videos from " + ExternalID));
             List<YoutubeVideo> videosList = new();
-
+            
             foreach (string video in videos)
             {
                 YoutubeVideo YTvideo = GetVideoObjectFromUrl(video);
@@ -97,6 +97,10 @@ namespace HoloDiscordBot
                 if (videoUploadDatematch.Success)
                 {
                     string[] dateVals = videoUploadDatematch.Groups[1].Value.Split('-');
+                    if (Regex.Match(dateVals[2], ".+?T.+").Success)
+                    {
+                        dateVals[2] = dateVals[2].Split("T")[0];
+                    }
                     DateTime date = new(int.Parse(dateVals[0]), int.Parse(dateVals[1]), int.Parse(dateVals[2]));
                     return new YoutubeVideo(videoUrl, date, false, videoTitle);
                 }

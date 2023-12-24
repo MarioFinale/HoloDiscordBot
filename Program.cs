@@ -96,7 +96,96 @@ namespace HoloDiscordBot
                         }
 
                         await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating next Streams message..."));
-                        await channel.SendMessageAsync(nextStreamsAndLives);
+                        if (nextStreamsAndLives.Length > 1999)
+                        {
+                            await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Message lenght is over 2000 characters, splitting..."));
+
+                            if (nextStreamsAndLives.Contains("\nUpcoming Streams:") && nextStreamsAndLives.Contains("Live now:"))
+                            {
+                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Splitting by upcoming streams."));
+                                string[] messages = nextStreamsAndLives.Split("\nUpcoming Streams:");                                
+                                messages[1] = "\n •❅─────────────── ooo ───────────────❅•\n" + "\nUpcoming Streams:" + messages[1];
+                                await channel.SendMessageAsync(messages[0]);
+
+                                
+                                if (messages[1].Length > 1999)
+                                {
+                                    int i = 1999;
+                                    string secondmessage = messages[1];
+                                    while (true)
+                                    {
+                                        char c1 = secondmessage[i];
+                                        char c2 = secondmessage[i + 1];
+                                        char c3 = secondmessage[i + 2];
+
+                                        if (c1 == '\n' && c2 == '-' && c3 == ' ')
+                                        {
+                                            messages[0] = secondmessage[..i];
+                                            messages[1] = secondmessage[i..];
+                                            break;
+                                        }
+                                        i--;
+                                    }
+                                    await channel.SendMessageAsync(messages[0]);
+                                    await channel.SendMessageAsync(messages[1]);
+                                }
+                                else
+                                {
+                                    await channel.SendMessageAsync(messages[1]);
+                                }                               
+                            }
+                            else
+                            {
+                                await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Splitting by character lenght & new line."));
+                                string[] messages = new string[2];
+                                int i = 1999;
+                                while (true)
+                                {
+                                    char c1 = nextStreamsAndLives[i];
+                                    char c2 = nextStreamsAndLives[i + 1];
+                                    char c3 = nextStreamsAndLives[i + 2];
+
+                                    if (c1 == '\n' && c2 == '-' && c3 == ' ')
+                                    {
+                                        messages[0] = nextStreamsAndLives[..i];
+                                        messages[1] = nextStreamsAndLives[i..];
+                                        break;
+                                    }
+                                    i--;
+                                }
+                                await channel.SendMessageAsync(messages[0]);
+                                if (messages[1].Length > 1999)
+                                {
+                                    i = 1999;
+                                    string secondmessage = messages[1];
+                                    while (true)
+                                    {
+                                        char c1 = secondmessage[i];
+                                        char c2 = secondmessage[i + 1];
+                                        char c3 = secondmessage[i + 2];
+
+                                        if (c1 == '\n' && c2 == '-' && c3 == ' ')
+                                        {
+                                            messages[0] = secondmessage[..i];
+                                            messages[1] = secondmessage[i..];
+                                            break;
+                                        }
+                                        i--;
+                                    }
+                                    await channel.SendMessageAsync(messages[0]);
+                                    await channel.SendMessageAsync(messages[1]);
+                                }
+                                else
+                                {
+                                    await channel.SendMessageAsync(messages[1]);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            await channel.SendMessageAsync(nextStreamsAndLives);
+                        }
+                        
                         await Utils.Log(new LogMessage(LogSeverity.Info, "Updater", "Updating channel name..."));
                         await channel.ModifyAsync(prop => prop.Name = nextShort);
                     }
@@ -221,7 +310,7 @@ namespace HoloDiscordBot
                 {
                     text += "\n- " + Utils.CapitalizeFirstLetter(channel.Name) + " " + channel.Emoji + " | " + channel.LatestLiveOrNextUrl + " ";
                 }
-                textToPrint += text + "\n";
+                textToPrint += text + "\n\n •❅─────────────── ooo ───────────────❅•\n\n"; ;
 
             }
 
