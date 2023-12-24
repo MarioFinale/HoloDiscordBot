@@ -276,7 +276,6 @@ namespace HoloDiscordBot
         async Task SendMessageInParts(ITextChannel channel, string message)
         {
             int index = 1999;
-
             // Iterate through the message to find a suitable split point
             while (true)
             {
@@ -333,6 +332,14 @@ namespace HoloDiscordBot
         {
             // Array to store the split messages
             string[] messages = new string[2];
+
+            //try to split by "Upcoming Streams" first.
+            if (message.Contains("\nUpcoming Streams:"))
+            {
+                messages[0] = message.Split("\nUpcoming Streams:")[0];
+                messages[1] = "\nUpcoming Streams:" + message.Split("\nUpcoming Streams:")[1];
+                return messages;
+            }
 
             // Start index for splitting
             int index = 1999;
