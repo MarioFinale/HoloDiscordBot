@@ -30,7 +30,12 @@ namespace HoloDiscordBot
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Getting videos from " + ExternalID));
             XmlDocument doc = GetfeedFromChannelByExternalID(ExternalID).Item1;
             string[]? videos = GetVideoUrlsFromXMLFeed(doc);
-            if (videos is null) return;
+
+            if (videos is null || videos.Length < 1)
+            {
+                Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", Name + " (External ID " + ExternalID + ") has no videos! 😢"));
+                return;
+            }
             string liveVideoUrl = string.Empty;
             Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", "Sorting and processing videos from " + ExternalID));
             List<YoutubeVideo> videosList = new();
@@ -42,7 +47,7 @@ namespace HoloDiscordBot
                 {
                     Live = true;
                     videosList.Add(YTvideo);
-                    Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", Name + " is live! skipping processing of later videos..."));
+                    Utils.Log(new Discord.LogMessage(Discord.LogSeverity.Info, "YoutubeChannel", Name + " is live! skipping processing of videos..."));
                     break;
                 }
                 videosList.Add(YTvideo);
